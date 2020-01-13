@@ -20,6 +20,9 @@ query($organization: String!, $repository: String!,$cursor: String) {
 			name
             url
             viewerHasStarred
+            stargazers {
+                totalCount
+            }            
 			issues(first: 5,after: $cursor, states: [OPEN]) {
 				totalCount
 				pageInfo {
@@ -121,31 +124,41 @@ const removeStarFromRepository = repositoryId => {
 
 const resolveAddStarMutation = mutationResult => state => {
   const { viewerHasStarred } = mutationResult.data.data.addStar.starrable;
+  const { totalCount } = state.organization.repository.stargazers;
+
   return {
     ...state,
     organization: {
       ...state.organization,
       repository: {
         ...state.organization.repository,
-        viewerHasStarred
+        viewerHasStarred,
+        stargazers: {
+          totalCount: totalCount + 1
+        }
       }
     }
   };
 };
 
 const resolveRemoveStarMutation = mutationResult => state => {
-    const { viewerHasStarred } = mutationResult.data.data.removeStar.starrable;
-    return {
-      ...state,
-      organization: {
-        ...state.organization,
-        repository: {
-          ...state.organization.repository,
-          viewerHasStarred
+  const { viewerHasStarred } = mutationResult.data.data.removeStar.starrable;
+  const { totalCount } = state.organization.repository.stargazers;
+
+  return {
+    ...state,
+    organization: {
+      ...state.organization,
+      repository: {
+        ...state.organization.repository,
+        viewerHasStarred,
+        stargazers: {
+          totalCount: totalCount - 1
         }
       }
-    };
+    }
   };
+};
 
 class App extends Component {
   state = {
@@ -247,7 +260,7 @@ const Repository = ({ repository, onFetchMoreIssues, onStarRepository }) => (
       <a href={repository.url}>{repository.name}</a>
     </p>
     <button type="button" onClick={() => onStarRepository(repository.id, repository.viewerHasStarred)}>
-      {repository.viewerHasStarred ? "Unstar" : "Star"}
+      ({repository.stargazers.totalCount}) {repository.viewerHasStarred ? "Unstar" : "Star"}
     </button>
     <ul>
       {repository.issues.edges.map(issue => (
